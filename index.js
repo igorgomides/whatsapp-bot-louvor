@@ -1,4 +1,5 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
 const readline = require('readline');
 const fs = require('fs');
 const { isEscala, parseEscala, formatarResumo } = require('./parseEscala');
@@ -33,11 +34,10 @@ const startBot = (numeroTelefone = null) => {
                 '--disable-software-rasterizer',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--no-sandbox',
-                '--single-process'
+                '--no-sandbox'
             ],
             headless: true,
-            dumpio: true
+            dumpio: false
         }
     };
 
@@ -60,13 +60,15 @@ const startBot = (numeroTelefone = null) => {
         console.log('4. Digite o código acima para conectar.\n');
     });
 
-    client.on('qr', () => {
+    client.on('qr', (qr) => {
         console.log('\n⚠️ EVENTO: "qr" disparado (O bot está pedindo um novo QR Code)');
         if (!isAuthExists) {
             console.log('ℹ️ É esperado pois não há sessão salva.');
         } else {
             console.log('‼️ A sessão salva parece ter expirado ou é inválida.');
         }
+        console.log('Escaneie o QR Code abaixo:');
+        qrcode.generate(qr, { small: true });
     });
 
     client.on('loading_screen', (percent, message) => {
