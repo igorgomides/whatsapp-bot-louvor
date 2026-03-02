@@ -29,7 +29,12 @@ const startBot = (numeroTelefone = null) => {
                 '--no-first-run',
                 '--no-zygote',
                 '--disable-gpu',
-                '--disable-extensions'
+                '--disable-extensions',
+                '--disable-software-rasterizer',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--single-process'
             ],
             headless: true,
             dumpio: true
@@ -56,29 +61,28 @@ const startBot = (numeroTelefone = null) => {
     });
 
     client.on('qr', () => {
+        console.log('\n⚠️ EVENTO: "qr" disparado (O bot está pedindo um novo QR Code)');
         if (!isAuthExists) {
-            console.log('\n⚠️ Tentativa de login via QR Code.');
+            console.log('ℹ️ É esperado pois não há sessão salva.');
+        } else {
+            console.log('‼️ A sessão salva parece ter expirado ou é inválida.');
         }
     });
 
     client.on('loading_screen', (percent, message) => {
-        console.log('⏳ CARREGANDO:', percent, '%', message);
+        console.log(`⏳ EVENTO: "loading_screen" -> ${percent}%: ${message}`);
     });
 
     client.on('authenticated', () => {
-        console.log('🔐 AUTENTICADO COM SUCESSO!');
+        console.log('🔐 EVENTO: "authenticated" -> Autenticado com sucesso!');
     });
 
     client.on('auth_failure', msg => {
-        console.error('❌ FALHA NA AUTENTICAÇÃO', msg);
-    });
-
-    client.on('disconnected', (reason) => {
-        console.log('🔌 DESCONECTADO:', reason);
+        console.error('❌ EVENTO: "auth_failure" -> Falha na autenticação:', msg);
     });
 
     client.on('ready', () => {
-        console.log('\n✅ Cliente WhatsApp conectado e pronto para uso!');
+        console.log('\n✅ EVENTO: "ready" -> Cliente pronto para uso!');
         console.log(`🎵 Escutando escalas no grupo "${GRUPO_LOUVOR}"`);
         console.log(`🤖 Comandos do bot no grupo "${GRUPO_BOT}"`);
 
