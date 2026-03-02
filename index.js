@@ -28,9 +28,11 @@ const startBot = (numeroTelefone = null) => {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--disable-extensions'
             ],
-            headless: true
+            headless: true,
+            dumpio: true
         }
     };
 
