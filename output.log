@@ -1,0 +1,61 @@
+
+🔄 Sessão encontrada! Iniciando o bot diretamente...
+⏳ CARREGANDO: 0 % WhatsApp
+🔐 AUTENTICADO COM SUCESSO!
+
+✅ Cliente WhatsApp conectado e pronto para uso!
+🎵 Escutando escalas no grupo "Louvor discípulos"
+🤖 Comandos do bot no grupo "Whatsapp Bot"
+⏰ Refresh automático de token configurado (a cada 12h)
+🌐 API GET https://api-v6.louveapp.com.br/auth/loggedIn
+❌ Erro ao processar mensagem: Error [TypeError]: Cannot read properties of undefined (reading '_serialized')
+    at window.WWebJS.getContact (evaluate at Binding.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:249:36), <anonymous>:705:23)
+    at #evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:391:56)
+    at async ExecutionContext.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:277:16)
+    at async IsolatedWorld.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/IsolatedWorld.js:100:16)
+    at async CdpFrame.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:362:20)
+    at async CdpPage.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:830:20)
+    at async Client.getContactById (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:1193:23)
+    at async Client.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/index.js:96:33)
+❌ Erro ao processar mensagem: Error [TypeError]: Cannot read properties of undefined (reading '_serialized')
+    at window.WWebJS.getContact (evaluate at Binding.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:249:36), <anonymous>:705:23)
+    at #evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:391:56)
+    at async ExecutionContext.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:277:16)
+    at async IsolatedWorld.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/IsolatedWorld.js:100:16)
+    at async CdpFrame.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:362:20)
+    at async CdpPage.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:830:20)
+    at async Client.getContactById (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:1193:23)
+    at async Client.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/index.js:96:33)
+❌ Erro ao processar mensagem: Error [TypeError]: Cannot read properties of undefined (reading '_serialized')
+    at window.WWebJS.getContact (evaluate at Binding.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:249:36), <anonymous>:705:23)
+    at #evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:391:56)
+    at async ExecutionContext.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:277:16)
+    at async IsolatedWorld.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/IsolatedWorld.js:100:16)
+    at async CdpFrame.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:362:20)
+    at async CdpPage.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:830:20)
+    at async Client.getContactById (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:1193:23)
+    at async Client.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/index.js:96:33)
+
+🔔 [Louvor discípulos] Mensagem de Willo😎
+❌ Erro ao processar mensagem: Error: Data passed to getter must include an id property (it's how we memoize) but got undefined
+    at window.WWebJS.getContactModel (evaluate at Binding.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:249:36), <anonymous>:684:47)
+    at window.WWebJS.getContact (evaluate at Binding.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:249:36), <anonymous>:710:29)
+    at #evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:391:56)
+    at async ExecutionContext.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/ExecutionContext.js:277:16)
+    at async IsolatedWorld.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/IsolatedWorld.js:100:16)
+    at async CdpFrame.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:362:20)
+    at async CdpPage.evaluate (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:830:20)
+    at async Client.getContactById (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/node_modules/whatsapp-web.js/src/Client.js:1193:23)
+    at async Client.<anonymous> (/Users/igorgomides/Documents/ANTIGRAVITY/PROCESS AUTOMATION/whatsapp-bot/index.js:96:33)
+    at h (https://static.whatsapp.net/rsrc.php/v4iEAT4/yV/l/en_US-j/YyIYQB4OcAgJ7jgr_N_MyqJpjyT4CisW5E_MaRlu5PhfoSZUXBCdwpOi-qmD8T-wTHN3euuTkbL3NYCJGtftOYSqJbWjd80rl9d1lcwzsTPdSoh5sK4SPLWgpefU9FgaDj4PLxn0YdNEiEg0cAzfn5x3LW3MbnvyTEmgMleG0f6O3QccFrdV-YRrsRlZn74DkNV2-eQwWjJ9pw2ToqLHCXmPk0ZWRkWb_niFYH6fEJS9CKgVIG_obd5355i_7zIQDBbp1AniKuOW04l1PI7v8juB_nzcVG.js:797:2442)
+    at v (https://static.whatsapp.net/rsrc.php/v4iEAT4/yV/l/en_US-j/YyIYQB4OcAgJ7jgr_N_MyqJpjyT4CisW5E_MaRlu5PhfoSZUXBCdwpOi-qmD8T-wTHN3euuTkbL3NYCJGtftOYSqJbWjd80rl9d1lcwzsTPdSoh5sK4SPLWgpefU9FgaDj4PLxn0YdNEiEg0cAzfn5x3LW3MbnvyTEmgMleG0f6O3QccFrdV-YRrsRlZn74DkNV2-eQwWjJ9pw2ToqLHCXmPk0ZWRkWb_niFYH6fEJS9CKgVIG_obd5355i_7zIQDBbp1AniKuOW04l1PI7v8juB_nzcVG.js:797:4570)
+    at s (https://static.whatsapp.net/rsrc.php/v4/ya/r/rN765f0m1ID.js:76:179)
+⏳ CARREGANDO: 95 % WhatsApp
+⏳ CARREGANDO: 99 % WhatsApp
+💾 Token LouveApp salvo com sucesso!
+🔄 Token renovado com sucesso!
+🔑 Token LouveApp válido!
+🔄 Renovando token do LouveApp...
+🌐 API GET https://api-v6.louveapp.com.br/auth/loggedIn
+💾 Token LouveApp salvo com sucesso!
+🔄 Token renovado com sucesso!
