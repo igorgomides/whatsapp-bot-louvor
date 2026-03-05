@@ -19,6 +19,7 @@ const path = require('path');
 puppeteer.use(StealthPlugin());
 
 const COOKIES_FILE = path.join(__dirname, 'walmart_cookies.json');
+const SCREENSHOT_DIR = path.join(__dirname, 'debug_screenshots');
 const WALMART_URL = 'https://www.walmart.ca';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -30,6 +31,18 @@ function sleep(ms) {
 
 function randomDelay(min = 1200, max = 2800) {
     return sleep(min + Math.random() * (max - min));
+}
+
+/** Save a debug screenshot */
+async function screenshot(page, name) {
+    try {
+        if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+        const file = path.join(SCREENSHOT_DIR, `${name}_${Date.now()}.png`);
+        await page.screenshot({ path: file, fullPage: true });
+        console.log(`📸 Screenshot salvo: ${file}`);
+    } catch (e) {
+        console.warn('⚠️ Não foi possível salvar screenshot:', e.message);
+    }
 }
 
 /** Save browser cookies to disk */
@@ -53,25 +66,101 @@ async function loadCookies(page) {
     }
 }
 
+/** Navigate to a URL with fallback from networkidle2 → domcontentloaded */
+async function gotoSafe(page, url) {
+    try {
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    } catch {
+        console.warn('⚠️ networkidle2 falhou, tentando domcontentloaded...');
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await sleep(3000); // extra wait for JS render
+    }
+}
+
 /** Login on Walmart.ca using credentials from .env */
 async function fazerLogin(page) {
     console.log('🔐 Fazendo login no Walmart.ca...');
 
-    await page.goto(`${WALMART_URL}/account/login`, { waitUntil: 'networkidle2', timeout: 60000 });
-    await randomDelay();
+    await gotoSafe(page, `${WALMART_URL}/account/login`);
+    await randomDelay(1500, 2500);
 
-    // Fill e-mail
-    await page.waitForSelector('input[type="email"], input[name="email"], #email', { timeout: 15000 });
-    await page.type('input[type="email"], input[name="email"], #email', process.env.WALMART_EMAIL, { delay: 60 });
+    // Debug: what does the page look like?
+    const currentUrl = page.url();
+    console.log(`🌐 URL atual após navegar para login: ${currentUrl}`);
+    await screenshot(page, 'login_page');
+
+    // Extended list of selectors Walmart uses for the email field
+    const emailSelectors = [
+        'input[type="email"]',
+        'input[name="email"]',
+        '#email',
+        'input[autocomplete="email"]',
+        'input[autocomplete="username"]',
+        'input[placeholder*="mail" i]',
+        'input[data-automation="email"]',
+    ];
+
+    let emailField = null;
+    for (const sel of emailSelectors) {
+        try {
+            await page.waitForSelector(sel, { timeout: 8000 });
+            emailField = sel;
+            console.log(`✅ Campo de email encontrado: ${sel}`);
+            break;
+        } catch {
+            // try next
+        }
+    }
+
+    if (!emailField) {
+        await screenshot(page, 'login_no_email_field');
+        throw new Error('Campo de email não encontrado. Walmart pode estar bloqueando. Veja o screenshot em skills/walmart/debug_screenshots/');
+    }
+
+    // Type email
+    await page.type(emailField, process.env.WALMART_EMAIL, { delay: 70 });
     await randomDelay(500, 900);
 
-    // Fill password
-    await page.type('input[type="password"], input[name="password"], #password', process.env.WALMART_PASSWORD, { delay: 60 });
+    // Password selectors
+    const passwordSelectors = [
+        'input[type="password"]',
+        'input[name="password"]',
+        '#password',
+        'input[autocomplete="current-password"]',
+        'input[data-automation="password"]',
+    ];
+
+    let passwordField = null;
+    for (const sel of passwordSelectors) {
+        const el = await page.$(sel);
+        if (el) { passwordField = sel; break; }
+    }
+
+    if (!passwordField) {
+        await screenshot(page, 'login_no_password_field');
+        throw new Error('Campo de senha não encontrado.');
+    }
+
+    await page.type(passwordField, process.env.WALMART_PASSWORD, { delay: 70 });
     await randomDelay(500, 900);
 
     // Submit
     await page.keyboard.press('Enter');
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
+
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
+    } catch {
+        await sleep(4000);
+    }
+
+    await screenshot(page, 'login_after_submit');
+    const urlApos = page.url();
+    console.log(`🌐 URL após login: ${urlApos}`);
+
+    if (urlApos.includes('/login')) {
+        await screenshot(page, 'login_failed');
+        throw new Error('Login falhou — ainda na página de login. Verifique credenciais ou CAPTCHA.');
+    }
 
     await saveCookies(page);
     console.log('✅ Login realizado com sucesso.');
@@ -80,8 +169,7 @@ async function fazerLogin(page) {
 /** Check if current page indicates we are logged in */
 async function estaLogado(page) {
     try {
-        // Navigate to the account page and check if redirected to login
-        await page.goto(`${WALMART_URL}/account`, { waitUntil: 'networkidle2', timeout: 30000 });
+        await gotoSafe(page, `${WALMART_URL}/account`);
         const url = page.url();
         return !url.includes('/login');
     } catch {
@@ -134,7 +222,7 @@ async function fazerCompras(itens) {
         }
 
         // Navigate to home before starting to search
-        await page.goto(WALMART_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+        await gotoSafe(page, WALMART_URL);
         await randomDelay();
 
         // ── Shopping loop ───────────────────────────────────────────────────
@@ -146,7 +234,7 @@ async function fazerCompras(itens) {
             console.log(`🔍 Buscando: "${nome}" (${quantidade}x)...`);
 
             try {
-                await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+                await gotoSafe(page, searchUrl);
                 await randomDelay();
 
                 // ── Find "Add to Cart" button on first result ───────────────
@@ -188,6 +276,7 @@ async function fazerCompras(itens) {
 
                 if (!botaoEncontrado) {
                     console.log(`  ⚠️ "${nome}" — Botão "Add to cart" não encontrado.`);
+                    await screenshot(page, `item_not_found_${nome.replace(/\s+/g, '_')}`);
                     naoEncontrados.push(nome);
                 }
             } catch (err) {
