@@ -1,23 +1,34 @@
+/**
+ * index.js — WhatsApp Bot Hub
+ *
+ * One WhatsApp session, multiple skills.
+ * To add a new feature: create skills/<name>/index.js and register it below.
+ */
+
+require('dotenv').config();
+
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const readline = require('readline');
 const fs = require('fs');
-const { isEscala, parseEscala, formatarResumo } = require('./parseEscala');
-const louveApp = require('./louveAppApi');
 
-const GRUPO_LOUVOR = 'Louvor discípulos';
-const GRUPO_LOUVOR_TB = 'Louvor discípulos tb';
-const GRUPO_BOT = 'Whatsapp Bot';
+// ─── Register Skills ───────────────────────────────────────────────────────────
+// Each skill must export: { name, onReady(client), handleMessage(msg, client) }
+const skills = [
+    require('./skills/louvor'),
+    require('./skills/walmart'),
+    // Future skills go here 👇
+    // require('./skills/finance'),
+    // require('./skills/reminders'),
+];
 
-// Armazena a última escala pendente de confirmação
-let escalaPendente = null;
-
-// Verifica se já existe uma sessão aparentemente válida salva
+// ─── Auth check ────────────────────────────────────────────────────────────────
 let isAuthExists = false;
 if (fs.existsSync('.wwebjs_auth/session/Default/Local Storage')) {
     isAuthExists = true;
 }
 
+// ─── Bot startup ───────────────────────────────────────────────────────────────
 const startBot = (numeroTelefone = null) => {
     const clientOptions = {
         authStrategy: new LocalAuth(),
@@ -32,23 +43,22 @@ const startBot = (numeroTelefone = null) => {
                 '--disable-gpu',
                 '--disable-extensions',
                 '--disable-software-rasterizer',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--no-sandbox'
             ],
             headless: true,
-            dumpio: false
-        }
+            dumpio: false,
+        },
     };
 
     if (numeroTelefone && !isAuthExists) {
         clientOptions.pairWithPhoneNumber = {
             phoneNumber: numeroTelefone,
-            showNotification: true
+            showNotification: true,
         };
     }
 
     const client = new Client(clientOptions);
+
+    // ── Auth events ────────────────────────────────────────────────────────────
 
     client.on('code', (code) => {
         console.log('\n=========================================');
@@ -61,358 +71,90 @@ const startBot = (numeroTelefone = null) => {
     });
 
     client.on('qr', (qr) => {
-        console.log('\n⚠️ EVENTO: "qr" disparado (O bot está pedindo um novo QR Code)');
-        if (!isAuthExists) {
-            console.log('ℹ️ É esperado pois não há sessão salva.');
-        } else {
-            console.log('‼️ A sessão salva parece ter expirado ou é inválida.');
-        }
-        console.log('Escaneie o QR Code abaixo:');
+        console.log('\n⚠️ QR Code gerado — escaneie com o WhatsApp:');
         qrcode.generate(qr, { small: true });
     });
 
     client.on('loading_screen', (percent, message) => {
-        console.log(`⏳ EVENTO: "loading_screen" -> ${percent}%: ${message}`);
+        console.log(`⏳ Carregando... ${percent}%: ${message}`);
     });
 
     client.on('authenticated', () => {
-        console.log('🔐 EVENTO: "authenticated" -> Autenticado com sucesso!');
+        console.log('🔐 Autenticado com sucesso!');
     });
 
-    client.on('auth_failure', msg => {
-        console.error('❌ EVENTO: "auth_failure" -> Falha na autenticação:', msg);
+    client.on('auth_failure', (msg) => {
+        console.error('❌ Falha na autenticação:', msg);
     });
 
-    client.on('ready', () => {
-        console.log('\n✅ EVENTO: "ready" -> Cliente pronto para uso!');
-        console.log(`🎵 Escutando escalas no grupo "${GRUPO_LOUVOR}"`);
-        console.log(`🤖 Comandos do bot no grupo "${GRUPO_BOT}"`);
+    client.on('ready', async () => {
+        console.log('\n✅ Bot Hub pronto!');
+        console.log(`🔧 Skills ativas: ${skills.map(s => s.name).join(', ')}`);
 
-        // Inicia refresh automático do token LouveApp
-        louveApp.iniciarRefreshAutomatico();
-
-        // Tenta renovar o token ao iniciar
-        if (louveApp.getToken()) {
-            louveApp.refreshToken().then(ok => {
-                if (ok) console.log('🔑 Token LouveApp válido!');
-                else console.log(`⚠️ Token LouveApp expirado. Use !token <token> no grupo "${GRUPO_BOT}".`);
-            });
-        } else {
-            console.log(`⚠️ Token LouveApp não configurado. Use !token <token> no grupo "${GRUPO_BOT}".`);
+        // Initialize each skill
+        for (const skill of skills) {
+            try {
+                if (skill.onReady) await skill.onReady(client);
+            } catch (e) {
+                console.error(`❌ Erro ao iniciar skill "${skill.name}":`, e.message);
+            }
         }
     });
 
-    client.on('message_create', async msg => {
+    // ── Message routing ────────────────────────────────────────────────────────
+
+    client.on('message_create', async (msg) => {
         try {
-            const chat = await msg.getChat();
-            if (!chat.isGroup) return;
-
-            const textoFormatado = msg.body.toLowerCase().trim();
-
-            // ============ GRUPO "Louvor discípulos" ============
-            if (chat.name === GRUPO_LOUVOR) {
-                let senderName = 'Desconhecido';
-                try {
-                    const contact = await msg.getContact();
-                    senderName = contact.pushname || contact.name || contact.number;
-                } catch (e) {
-                    console.log('⚠️ Erro ao obter contato:', e.message);
-                }
-
-                console.log(`\n🔔 [${GRUPO_LOUVOR}] Mensagem de ${senderName}`);
-
-                // Detecta se é uma escala
-                if (isEscala(msg.body)) {
-                    console.log('📋 ESCALA DETECTADA! Parseando...');
-
-                    const dados = parseEscala(msg.body);
-                    console.log('📊 Dados extraídos:', JSON.stringify(dados, null, 2));
-
-                    if (dados.escalados.length > 0 && dados.musicas.length > 0) {
-                        // Salva a escala pendente
-                        escalaPendente = dados;
-
-                        // Envia resumo para o grupo de gerenciamento para confirmação
-                        const chats = await client.getChats();
-                        const grupoBot = chats.find(c => c.isGroup && c.name === GRUPO_BOT);
-
-                        if (grupoBot) {
-                            const resumo = formatarResumo(dados);
-                            await grupoBot.sendMessage(resumo);
-                            console.log(`✅ Resumo enviado para o grupo "${GRUPO_BOT}"`);
-                        } else {
-                            console.log(`⚠️ Grupo "${GRUPO_BOT}" não encontrado!`);
-                        }
-                    } else {
-                        console.log('⚠️ Escala incompleta - poucos dados extraídos.');
-                    }
-                }
-            }
-
-            // ============ GRUPO "links uteis" (comandos do bot) ============
-            if (chat.name === GRUPO_BOT) {
-                try {
-                    const contact = await msg.getContact();
-                    console.log(`\n🤖 [${GRUPO_BOT}] Comando de ${contact.pushname || contact.name || contact.number}: ${msg.body}`);
-                } catch (e) {
-                    console.log(`\n🤖 [${GRUPO_BOT}] Comando recebido: ${msg.body} (Erro ao obter contato: ${e.message})`);
-                }
-
-                // Comando: !ping
-                if (textoFormatado === '!ping') {
-                    console.log('▶️ Executando: ping');
-                    msg.reply('pong! O bot está ativo e escutando. 🤖');
-                }
-
-                // Comando: !status
-                if (textoFormatado === '!status') {
-                    const tokenStatus = louveApp.getToken() ? '✅ Configurado' : '❌ Não configurado';
-                    const escalaStatus = escalaPendente
-                        ? `✅ Pendente (${escalaPendente.escalados.length} pessoas, ${escalaPendente.musicas.length} músicas)`
-                        : '❌ Nenhuma';
-
-                    msg.reply(
-                        `📊 *Status do Bot*\n\n` +
-                        `🔑 Token LouveApp: ${tokenStatus}\n` +
-                        `📋 Escala pendente: ${escalaStatus}`
-                    );
-                }
-
-                // Comando: !token <token_jwt>
-                if (textoFormatado.startsWith('!token ')) {
-                    const token = msg.body.substring(7).trim();
-                    if (token.length > 50) {
-                        louveApp.saveToken(token);
-                        msg.reply('✅ Token do LouveApp salvo com sucesso! Tentando renovar...');
-
-                        const ok = await louveApp.refreshToken();
-                        if (ok) {
-                            msg.reply('🔑 Token válido e renovado!');
-                        } else {
-                            msg.reply('⚠️ Token pode ter expirado. Tente obter um novo token.');
-                        }
-                    } else {
-                        msg.reply('❌ Token inválido. Cole o token JWT completo após !token.');
-                    }
-                }
-
-                // Comando: !confirmar (confirma a escala pendente)
-                if (textoFormatado === '!confirmar') {
-                    if (!escalaPendente) {
-                        msg.reply('❌ Nenhuma escala pendente para confirmar.');
-                        return;
-                    }
-
-                    if (!louveApp.getToken()) {
-                        msg.reply('❌ Token do LouveApp não configurado! Use !token <token> primeiro.');
-                        return;
-                    }
-
-                    msg.reply('⏳ Criando escala no LouveApp... Aguarde.');
-
-                    try {
-                        const resultado = await louveApp.criarEscala({
-                            descricao: 'Culto de Domingo',
-                            data: escalaPendente.dataEvento,
-                            escalados: escalaPendente.escalados,
-                            musicas: escalaPendente.musicas,
-                        });
-
-                        const confirmacaoMsg =
-                            '✅ *Escala criada com sucesso no LouveApp!*\n\n' +
-                            `📅 ${new Date(escalaPendente.dataEvento).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}\n` +
-                            `👥 ${escalaPendente.escalados.length} membros\n` +
-                            `🎵 ${escalaPendente.musicas.length} músicas\n\n` +
-                            '🔗 Confira em: https://app.louveapp.com.br';
-
-                        msg.reply(confirmacaoMsg);
-
-                        // Encaminha para o grupo Louvor discípulos tb
-                        const chats = await client.getChats();
-                        const grupoConfirmacao = chats.find(c => c.isGroup && c.name === GRUPO_LOUVOR_TB);
-
-                        if (grupoConfirmacao) {
-                            await grupoConfirmacao.sendMessage(confirmacaoMsg);
-                            console.log(`✅ Confirmação enviada para o grupo "${GRUPO_LOUVOR_TB}"`);
-                        } else {
-                            console.log(`⚠️ Grupo "${GRUPO_LOUVOR_TB}" não encontrado para encaminhamento.`);
-                        }
-
-                        // Limpa a escala pendente
-                        escalaPendente = null;
-                    } catch (error) {
-                        console.error('❌ Erro ao criar escala:', error);
-                        msg.reply(`❌ Erro ao criar escala: ${error.message}\n\nTente novamente ou verifique o token.`);
-                    }
-                }
-
-                // Comando: !escala (agendar manualmente pelo grupo do bot)
-                if (textoFormatado.startsWith('!escala')) {
-                    console.log('📋 COMANDO !escala REGISTRADO. Parseando...');
-
-                    // Extrai o texto da escala (removendo a primeira linha com o comando se ela estiver sozinha)
-                    let textoEscala = msg.body;
-                    if (textoFormatado === '!escala') {
-                        msg.reply('❌ Você precisa enviar a escala junto com o comando. Exemplo:\n!escala\n@nome\nMusica 1\nMusica 2');
-                        return;
-                    }
-
-                    // Remove o comando !escala no início e processa o resto
-                    textoEscala = msg.body.replace(/^!escala\s*/i, '');
-
-                    const dados = parseEscala(textoEscala);
-                    console.log('📊 Dados extraídos:', JSON.stringify(dados, null, 2));
-
-                    if (dados.escalados.length > 0 && dados.musicas.length > 0) {
-                        escalaPendente = dados;
-                        const resumo = formatarResumo(dados);
-                        msg.reply(resumo);
-                        console.log(`✅ Resumo da inserção manual enviado para o grupo "${GRUPO_BOT}"`);
-                    } else {
-                        msg.reply('⚠️ Escala inválida ou incompleta. Certifique-se de marcar os membros com @ e colocar os nomes das músicas em linhas separadas.');
-                    }
-                }
-
-                // Comando: !alterar <campo> <valor> — edita a escala pendente antes de confirmar
-                // Exemplos:
-                //   !alterar data 15/03
-                //   !alterar hora 19:30
-                //   !alterar descricao Culto de Jovens
-                if (textoFormatado.startsWith('!alterar ')) {
-                    if (!escalaPendente) {
-                        msg.reply('❌ Nenhuma escala pendente para alterar. Envie uma escala primeiro com !escala.');
-                    } else {
-                        // Pega o conteúdo após !alterar (case-insensitive)
-                        const parteAlterar = msg.body.replace(/^!alterar\s+/i, '');
-                        const espacoIdx = parteAlterar.indexOf(' ');
-                        const campo = espacoIdx !== -1 ? parteAlterar.substring(0, espacoIdx).toLowerCase().trim() : parteAlterar.toLowerCase().trim();
-                        const valor = espacoIdx !== -1 ? parteAlterar.substring(espacoIdx + 1).trim() : '';
-
-                        if (!valor) {
-                            msg.reply('❌ Você precisa informar o novo valor. Ex: !alterar data 15/03 ou !alterar hora 19:30');
-                        } else if (campo === 'data') {
-                            // Regex para DD/MM ou DD/MM/YYYY
-                            const regexData = /^(?:[0-2][0-9]|3[01])\/(?:0[1-9]|1[0-2])(?:\/(?:\d{4}|\d{2}))?$/;
-                            if (!regexData.test(valor)) {
-                                msg.reply('❌ Formato de data inválido. Use DD/MM ou DD/MM/YYYY. Ex: !alterar data 15/03');
-                            } else {
-                                const dataAtual = new Date(escalaPendente.dataEvento);
-                                const partes = valor.split('/');
-                                const dia = parseInt(partes[0], 10);
-                                const mes = parseInt(partes[1], 10) - 1;
-                                let ano = dataAtual.getFullYear();
-                                if (partes.length === 3) {
-                                    ano = partes[2].length === 2 ? 2000 + parseInt(partes[2], 10) : parseInt(partes[2], 10);
-                                } else if (mes < new Date().getMonth()) {
-                                    ano++;
-                                }
-                                dataAtual.setFullYear(ano, mes, dia);
-                                escalaPendente.dataEvento = dataAtual.toISOString();
-                                const resumo = formatarResumo(escalaPendente);
-                                msg.reply(`✅ Data alterada! Aqui está a escala atualizada:\n\n${resumo}`);
-                            }
-                        } else if (campo === 'hora') {
-                            // Regex para HH:MM ou HHhMM
-                            const regexHora = /^(?:0[0-9]|1[0-9]|2[0-3])[:h][0-5][0-9]$/i;
-                            if (!regexHora.test(valor)) {
-                                msg.reply('❌ Formato de hora inválido. Use HH:MM ou HHhMM. Ex: !alterar hora 19:30');
-                            } else {
-                                const dataAtual = new Date(escalaPendente.dataEvento);
-                                const partesHora = valor.replace(/h/i, ':').split(':');
-                                dataAtual.setHours(parseInt(partesHora[0], 10), parseInt(partesHora[1], 10), 0, 0);
-                                escalaPendente.dataEvento = dataAtual.toISOString();
-                                const resumo = formatarResumo(escalaPendente);
-                                msg.reply(`✅ Horário alterado! Aqui está a escala atualizada:\n\n${resumo}`);
-                            }
-                        } else if (campo === 'descricao' || campo === 'descrição') {
-                            escalaPendente.descricao = valor;
-                            const resumo = formatarResumo(escalaPendente);
-                            msg.reply(`✅ Descrição alterada! Aqui está a escala atualizada:\n\n${resumo}`);
-                        } else {
-                            msg.reply('❌ Campo desconhecido. Use: !alterar data DD/MM | !alterar hora HH:MM | !alterar descricao <texto>');
-                        }
-                    }
-                }
-
-                // Comando: !cancelar (cancela a escala pendente)
-                if (textoFormatado === '!cancelar') {
-                    if (escalaPendente) {
-                        escalaPendente = null;
-                        msg.reply('❌ Escala pendente cancelada.');
-                    } else {
-                        msg.reply('ℹ️ Nenhuma escala pendente para cancelar.');
-                    }
-                }
-
-                // Comando: !ajuda
-                if (textoFormatado === '!ajuda') {
-                    msg.reply(
-                        '🤖 *Comandos do Bot*\n\n' +
-                        '!ping — Testa se o bot está ativo\n' +
-                        '!status — Mostra status do bot e token\n' +
-                        '!token <jwt> — Configura o token do LouveApp\n' +
-                        '!escala <texto> — Cria uma escala manual\n' +
-                        '!alterar data DD/MM — Muda a data da escala pendente\n' +
-                        '!alterar hora HH:MM — Muda o horário da escala pendente\n' +
-                        '!alterar descricao <texto> — Muda a descrição do culto\n' +
-                        '!confirmar — Confirma e cria a escala no LouveApp\n' +
-                        '!cancelar — Cancela a escala pendente\n' +
-                        '!ajuda — Mostra esta mensagem\n\n' +
-                        `O bot detecta escalas automaticamente no grupo "${GRUPO_LOUVOR}" e envia o resumo aqui para confirmação.`
-                    );
-                }
-
-                // Comando: !anotar (legado)
-                if (textoFormatado.startsWith('!anotar ')) {
-                    const informacao = msg.body.substring(8).trim();
-                    msg.reply(`✅ Anotação salva: "${informacao}"`);
-                }
+            for (const skill of skills) {
+                const handled = await skill.handleMessage(msg, client);
+                if (handled) break; // First skill to handle wins; remove `break` to allow multiple
             }
         } catch (error) {
-            console.error('❌ Erro ao processar mensagem:', error);
+            console.error('❌ Erro no roteador de mensagens:', error);
         }
     });
 
-    console.log('🚀 Inicializando cliente WhatsApp...');
+    // ── Initialize ─────────────────────────────────────────────────────────────
+
+    console.log('🚀 Inicializando Bot Hub...');
     client.initialize();
 
-    // Tratamento para fechar o Puppeteer (Chromium) corretamente ao parar o bot (Ctrl+C)
-    // Isso evita o erro de "Browser is already running" no futuro
-    process.on('SIGINT', async () => {
-        console.log('\n🛑 Encerrando o bot e fechando o navegador de forma segura...');
+    // Graceful shutdown
+    const shutdown = async (signal) => {
+        console.log(`\n🛑 ${signal} recebido — encerrando bot...`);
         try {
             await client.destroy();
             console.log('✅ Navegador fechado.');
-        } catch (error) {
-            console.log('⚠️ Erro ao tentar fechar o navegador:', error.message);
+        } catch (e) {
+            console.log('⚠️ Erro ao fechar navegador:', e.message);
         }
         process.exit(0);
-    });
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
 };
 
+// ─── Entry point ───────────────────────────────────────────────────────────────
+
 if (!isAuthExists) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
     console.log('\n=========================================');
-    console.log('🔄 PRIMEIRO ACESSO - AUTENTICAÇÃO');
+    console.log('🔄 PRIMEIRO ACESSO — AUTENTICAÇÃO');
     console.log('=========================================');
 
-    rl.question('Digite seu número com DDI e DDD (Ex: 5511999999999): ', (numero) => {
+    rl.question('Digite seu número com DDI e DDD (Ex: 15195028015): ', (numero) => {
         const numeroLimpo = numero.replace(/[^0-9]/g, '');
         rl.close();
-
         if (numeroLimpo.length < 10) {
-            console.log('❌ Número inválido. Reinicie o script e digite o número completo.');
+            console.log('❌ Número inválido. Reinicie o script.');
             process.exit(1);
         }
-
-        console.log(`\n⏳ Solicitando código para o número: ${numeroLimpo}... Aguarde.`);
+        console.log(`\n⏳ Solicitando código para: ${numeroLimpo}...`);
         startBot(numeroLimpo);
     });
 } else {
-    console.log('\n🔄 Sessão encontrada! Iniciando o bot diretamente...');
+    console.log('\n🔄 Sessão encontrada! Iniciando Bot Hub...');
     startBot();
 }
