@@ -56,9 +56,39 @@ async function saveCookies(page) {
 async function loadCookies(page) {
     if (!fs.existsSync(COOKIES_FILE)) return false;
     try {
-        const cookies = JSON.parse(fs.readFileSync(COOKIES_FILE, 'utf8'));
+        const raw = JSON.parse(fs.readFileSync(COOKIES_FILE, 'utf8'));
+
+        // Puppeteer only accepts these specific fields — strip everything else
+        const VALID_FIELDS = new Set(['name', 'value', 'domain', 'path', 'expires', 'httpOnly', 'secure', 'sameSite', 'url']);
+        const VALID_SAMESITE = new Set(['Strict', 'Lax', 'None']);
+
+        const cookies = raw
+            .filter(c => c.name && c.value !== undefined)
+            .map(c => {
+                const clean = {};
+                for (const [k, v] of Object.entries(c)) {
+                    if (VALID_FIELDS.has(k)) clean[k] = v;
+                }
+                // Force .ca domain (chrome-cookies-secure may have .com cookies mixed in)
+                if (clean.domain && clean.domain.includes('walmart')) {
+                    clean.domain = clean.domain.replace('walmart.com', 'walmart.ca');
+                }
+                // Fix invalid sameSite values
+                if (clean.sameSite && !VALID_SAMESITE.has(clean.sameSite)) {
+                    delete clean.sameSite;
+                }
+                return clean;
+            })
+            // Only load walmart.ca cookies
+            .filter(c => !c.domain || c.domain.includes('walmart.ca'));
+
+        if (cookies.length === 0) {
+            console.warn('⚠️ Nenhum cookie válido para walmart.ca encontrado no arquivo.');
+            return false;
+        }
+
         await page.setCookie(...cookies);
-        console.log('🍪 Cookies carregados do arquivo.');
+        console.log(`🍪 ${cookies.length} cookies carregados.`);
         return true;
     } catch (e) {
         console.warn('⚠️ Erro ao carregar cookies:', e.message);
