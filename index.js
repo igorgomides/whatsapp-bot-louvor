@@ -95,10 +95,10 @@ const startBot = (numeroTelefone = null) => {
         if (louveApp.getToken()) {
             louveApp.refreshToken().then(ok => {
                 if (ok) console.log('🔑 Token LouveApp válido!');
-                else console.log('⚠️ Token LouveApp expirado. Use !token <token> no grupo "links uteis".');
+                else console.log(`⚠️ Token LouveApp expirado. Use !token <token> no grupo "${GRUPO_BOT}".`);
             });
         } else {
-            console.log('⚠️ Token LouveApp não configurado. Use !token <token> no grupo "links uteis".');
+            console.log(`⚠️ Token LouveApp não configurado. Use !token <token> no grupo "${GRUPO_BOT}".`);
         }
     });
 
@@ -132,7 +132,7 @@ const startBot = (numeroTelefone = null) => {
                         // Salva a escala pendente
                         escalaPendente = dados;
 
-                        // Envia resumo para o grupo "links uteis" para confirmação
+                        // Envia resumo para o grupo de gerenciamento para confirmação
                         const chats = await client.getChats();
                         const grupoBot = chats.find(c => c.isGroup && c.name === GRUPO_BOT);
 
@@ -246,6 +246,33 @@ const startBot = (numeroTelefone = null) => {
                     }
                 }
 
+                // Comando: !escala (agendar manualmente pelo grupo do bot)
+                if (textoFormatado.startsWith('!escala')) {
+                    console.log('📋 COMANDO !escala REGISTRADO. Parseando...');
+
+                    // Extrai o texto da escala (removendo a primeira linha com o comando se ela estiver sozinha)
+                    let textoEscala = msg.body;
+                    if (textoFormatado === '!escala') {
+                        msg.reply('❌ Você precisa enviar a escala junto com o comando. Exemplo:\n!escala\n@nome\nMusica 1\nMusica 2');
+                        return;
+                    }
+
+                    // Remove o comando !escala no início e processa o resto
+                    textoEscala = msg.body.replace(/^!escala\s*/i, '');
+
+                    const dados = parseEscala(textoEscala);
+                    console.log('📊 Dados extraídos:', JSON.stringify(dados, null, 2));
+
+                    if (dados.escalados.length > 0 && dados.musicas.length > 0) {
+                        escalaPendente = dados;
+                        const resumo = formatarResumo(dados);
+                        msg.reply(resumo);
+                        console.log(`✅ Resumo da inserção manual enviado para o grupo "${GRUPO_BOT}"`);
+                    } else {
+                        msg.reply('⚠️ Escala inválida ou incompleta. Certifique-se de marcar os membros com @ e colocar os nomes das músicas em linhas separadas.');
+                    }
+                }
+
                 // Comando: !cancelar (cancela a escala pendente)
                 if (textoFormatado === '!cancelar') {
                     if (escalaPendente) {
@@ -263,6 +290,7 @@ const startBot = (numeroTelefone = null) => {
                         '!ping — Testa se o bot está ativo\n' +
                         '!status — Mostra status do bot e token\n' +
                         '!token <jwt> — Configura o token do LouveApp\n' +
+                        '!escala <texto> — Cria uma escala manual copiando e colando texto\n' +
                         '!confirmar — Confirma e cria a escala pendente no LouveApp\n' +
                         '!cancelar — Cancela a escala pendente\n' +
                         '!ajuda — Mostra esta mensagem\n\n' +
