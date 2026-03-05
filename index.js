@@ -273,6 +273,67 @@ const startBot = (numeroTelefone = null) => {
                     }
                 }
 
+                // Comando: !alterar <campo> <valor> — edita a escala pendente antes de confirmar
+                // Exemplos:
+                //   !alterar data 15/03
+                //   !alterar hora 19:30
+                //   !alterar descricao Culto de Jovens
+                if (textoFormatado.startsWith('!alterar ')) {
+                    if (!escalaPendente) {
+                        msg.reply('❌ Nenhuma escala pendente para alterar. Envie uma escala primeiro com !escala.');
+                    } else {
+                        // Pega o conteúdo após !alterar (case-insensitive)
+                        const parteAlterar = msg.body.replace(/^!alterar\s+/i, '');
+                        const espacoIdx = parteAlterar.indexOf(' ');
+                        const campo = espacoIdx !== -1 ? parteAlterar.substring(0, espacoIdx).toLowerCase().trim() : parteAlterar.toLowerCase().trim();
+                        const valor = espacoIdx !== -1 ? parteAlterar.substring(espacoIdx + 1).trim() : '';
+
+                        if (!valor) {
+                            msg.reply('❌ Você precisa informar o novo valor. Ex: !alterar data 15/03 ou !alterar hora 19:30');
+                        } else if (campo === 'data') {
+                            // Regex para DD/MM ou DD/MM/YYYY
+                            const regexData = /^(?:[0-2][0-9]|3[01])\/(?:0[1-9]|1[0-2])(?:\/(?:\d{4}|\d{2}))?$/;
+                            if (!regexData.test(valor)) {
+                                msg.reply('❌ Formato de data inválido. Use DD/MM ou DD/MM/YYYY. Ex: !alterar data 15/03');
+                            } else {
+                                const dataAtual = new Date(escalaPendente.dataEvento);
+                                const partes = valor.split('/');
+                                const dia = parseInt(partes[0], 10);
+                                const mes = parseInt(partes[1], 10) - 1;
+                                let ano = dataAtual.getFullYear();
+                                if (partes.length === 3) {
+                                    ano = partes[2].length === 2 ? 2000 + parseInt(partes[2], 10) : parseInt(partes[2], 10);
+                                } else if (mes < new Date().getMonth()) {
+                                    ano++;
+                                }
+                                dataAtual.setFullYear(ano, mes, dia);
+                                escalaPendente.dataEvento = dataAtual.toISOString();
+                                const resumo = formatarResumo(escalaPendente);
+                                msg.reply(`✅ Data alterada! Aqui está a escala atualizada:\n\n${resumo}`);
+                            }
+                        } else if (campo === 'hora') {
+                            // Regex para HH:MM ou HHhMM
+                            const regexHora = /^(?:0[0-9]|1[0-9]|2[0-3])[:h][0-5][0-9]$/i;
+                            if (!regexHora.test(valor)) {
+                                msg.reply('❌ Formato de hora inválido. Use HH:MM ou HHhMM. Ex: !alterar hora 19:30');
+                            } else {
+                                const dataAtual = new Date(escalaPendente.dataEvento);
+                                const partesHora = valor.replace(/h/i, ':').split(':');
+                                dataAtual.setHours(parseInt(partesHora[0], 10), parseInt(partesHora[1], 10), 0, 0);
+                                escalaPendente.dataEvento = dataAtual.toISOString();
+                                const resumo = formatarResumo(escalaPendente);
+                                msg.reply(`✅ Horário alterado! Aqui está a escala atualizada:\n\n${resumo}`);
+                            }
+                        } else if (campo === 'descricao' || campo === 'descrição') {
+                            escalaPendente.descricao = valor;
+                            const resumo = formatarResumo(escalaPendente);
+                            msg.reply(`✅ Descrição alterada! Aqui está a escala atualizada:\n\n${resumo}`);
+                        } else {
+                            msg.reply('❌ Campo desconhecido. Use: !alterar data DD/MM | !alterar hora HH:MM | !alterar descricao <texto>');
+                        }
+                    }
+                }
+
                 // Comando: !cancelar (cancela a escala pendente)
                 if (textoFormatado === '!cancelar') {
                     if (escalaPendente) {
@@ -290,8 +351,11 @@ const startBot = (numeroTelefone = null) => {
                         '!ping — Testa se o bot está ativo\n' +
                         '!status — Mostra status do bot e token\n' +
                         '!token <jwt> — Configura o token do LouveApp\n' +
-                        '!escala <texto> — Cria uma escala manual copiando e colando texto\n' +
-                        '!confirmar — Confirma e cria a escala pendente no LouveApp\n' +
+                        '!escala <texto> — Cria uma escala manual\n' +
+                        '!alterar data DD/MM — Muda a data da escala pendente\n' +
+                        '!alterar hora HH:MM — Muda o horário da escala pendente\n' +
+                        '!alterar descricao <texto> — Muda a descrição do culto\n' +
+                        '!confirmar — Confirma e cria a escala no LouveApp\n' +
                         '!cancelar — Cancela a escala pendente\n' +
                         '!ajuda — Mostra esta mensagem\n\n' +
                         `O bot detecta escalas automaticamente no grupo "${GRUPO_LOUVOR}" e envia o resumo aqui para confirmação.`
