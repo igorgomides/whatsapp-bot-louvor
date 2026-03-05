@@ -283,6 +283,19 @@ const startBot = (numeroTelefone = null) => {
 
     console.log('🚀 Inicializando cliente WhatsApp...');
     client.initialize();
+
+    // Tratamento para fechar o Puppeteer (Chromium) corretamente ao parar o bot (Ctrl+C)
+    // Isso evita o erro de "Browser is already running" no futuro
+    process.on('SIGINT', async () => {
+        console.log('\n🛑 Encerrando o bot e fechando o navegador de forma segura...');
+        try {
+            await client.destroy();
+            console.log('✅ Navegador fechado.');
+        } catch (error) {
+            console.log('⚠️ Erro ao tentar fechar o navegador:', error.message);
+        }
+        process.exit(0);
+    });
 };
 
 if (!isAuthExists) {
