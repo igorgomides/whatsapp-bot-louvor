@@ -312,6 +312,18 @@ async function fazerCompras(itens) {
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     );
 
+    // Force Canadian locale so walmart.ca doesn't redirect to .com
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-CA,en;q=0.9,fr-CA;q=0.8',
+    });
+
+    // Override navigator.language to appear as Canadian browser
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'language', { get: () => 'en-CA' });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-CA', 'en'] });
+    });
+
+
     const adicionados = [];
     const naoEncontrados = [];
 
