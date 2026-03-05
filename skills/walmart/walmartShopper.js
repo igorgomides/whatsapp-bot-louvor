@@ -75,6 +75,84 @@ async function gotoSafe(page, url) {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await sleep(3000); // extra wait for JS render
     }
+    // Always try to resolve CAPTCHA after navigating
+    await resolveCaptcha(page);
+}
+
+/**
+ * Detects and solves the Walmart "Robot or human? PRESS & HOLD" DataDome CAPTCHA.
+ * Simulates a realistic mouse hold on the button.
+ */
+async function resolveCaptcha(page) {
+    const holdSelectors = [
+        // DataDome press-and-hold button
+        'button[id*="hold"]',
+        'button[class*="hold"]',
+        '[aria-label*="hold" i]',
+        '[aria-label*="human" i]',
+        // Generic fallback — button with "PRESS" in visible text
+        'button',
+    ];
+
+    try {
+        // Check if the captcha modal is visible (short timeout — don't slow normal flow)
+        const captchaText = await page.$('div ::-p-text(Robot or human)') ||
+            await page.$('div ::-p-text(PRESS & HOLD)') ||
+            await page.$('div ::-p-text(confirm that you\'re human)');
+
+        if (!captchaText) return; // No CAPTCHA visible
+
+        console.log('🤖 CAPTCHA "PRESS & HOLD" detectado! Tentando resolver...');
+        await screenshot(page, 'captcha_detected');
+
+        // Find the hold button: try specific selectors first
+        let holdBtn = null;
+
+        // Try to find a button near the CAPTCHA text
+        holdBtn = await page.$('button');
+
+        // Broader search — find the button with hold text
+        if (!holdBtn) {
+            const allButtons = await page.$$('button');
+            for (const btn of allButtons) {
+                const text = await btn.evaluate(el => el.textContent);
+                if (/hold|press|human/i.test(text)) {
+                    holdBtn = btn;
+                    break;
+                }
+            }
+        }
+
+        if (!holdBtn) {
+            console.warn('⚠️ Botão do CAPTCHA não encontrado.');
+            await screenshot(page, 'captcha_btn_not_found');
+            return;
+        }
+
+        const box = await holdBtn.boundingBox();
+        if (!box) return;
+
+        // Move mouse to center of button
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+
+        await page.mouse.move(x, y, { steps: 10 });
+        await sleep(300);
+
+        // Press and hold for 4 seconds (mimicking human behavior)
+        await page.mouse.down();
+        console.log('🖱️ Segurando botão do CAPTCHA por 4s...');
+        await sleep(4000 + Math.random() * 1000);
+        await page.mouse.up();
+
+        console.log('✅ CAPTCHA resolvido! Aguardando resposta...');
+        await sleep(2500);
+        await screenshot(page, 'captcha_after_hold');
+
+    } catch (e) {
+        // CAPTCHA not present or couldn't solve — continue anyway
+        console.log(`ℹ️ Sem CAPTCHA ou não resolvível: ${e.message}`);
+    }
 }
 
 /** Login on Walmart.ca using credentials from .env */
