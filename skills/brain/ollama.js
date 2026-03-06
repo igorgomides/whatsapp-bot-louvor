@@ -14,7 +14,7 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3';
  * @param {number} timeoutMs
  * @returns {Promise<string>}
  */
-function chat(messages, timeoutMs = 30000) {
+function chat(messages, timeoutMs = 90000) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify({
             model: OLLAMA_MODEL,
