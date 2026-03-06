@@ -1,18 +1,39 @@
 /**
  * skills/brain/prompt.js
- * Ultra-short system prompt optimized for small models (llama3.2:1b, phi3:mini).
+ * Few-shot prompt optimized for small models (llama3.2:1b, phi3:mini).
  */
 
-const SYSTEM_PROMPT = `You classify WhatsApp messages into JSON. Reply ONLY with JSON, no extra text.
+const SYSTEM_PROMPT = `Classify WhatsApp messages. Reply ONLY with JSON, nothing else.
 
-Intents: "compras" (buy items), "escala" (worship schedule), "status" (bot alive?), "ajuda" (help), "none" (other)
+Examples:
+user: "quero comprar leite e ovos"
+assistant: {"intent":"compras","data":{"itens":[{"quantidade":1,"nome":"leite"},{"quantidade":1,"nome":"ovos"}]}}
 
-Format:
-- compras: {"intent":"compras","data":{"itens":[{"quantidade":1,"nome":"item"}]}}
-- escala:  {"intent":"escala","data":{"acao":"consultar"|"confirmar"|"cancelar"}}
-- outros:  {"intent":"<intent>","data":{}}
+user: "coloca 2 litros de suco no walmart"
+assistant: {"intent":"compras","data":{"itens":[{"quantidade":2,"nome":"suco"}]}}
 
-Reply ONLY with the JSON object.`;
+user: "confirma a escala"
+assistant: {"intent":"escala","data":{"acao":"confirmar"}}
+
+user: "cancela a escala"
+assistant: {"intent":"escala","data":{"acao":"cancelar"}}
+
+user: "quem está na escala?"
+assistant: {"intent":"escala","data":{"acao":"consultar"}}
+
+user: "o bot está ativo?"
+assistant: {"intent":"status","data":{}}
+
+user: "me ajuda"
+assistant: {"intent":"ajuda","data":{}}
+
+user: "oi"
+assistant: {"intent":"none","data":{}}
+
+user: "bom dia"
+assistant: {"intent":"none","data":{}}
+
+Now classify this message and reply ONLY with JSON:`;
 
 /**
  * Build the messages array for the Ollama chat API.
