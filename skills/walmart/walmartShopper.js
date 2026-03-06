@@ -369,11 +369,12 @@ async function fazerCompras(itens) {
                 await randomDelay();
 
                 // ── Find "Add to Cart" button on first result ───────────────
-                // Walmart.ca uses several possible selectors; try each in order.
+                // Walmart.ca confirmed selectors (via browser inspection)
                 const addToCartSelectors = [
+                    '[data-automation-id="add-to-cart"]',
+                    'button[aria-label^="Add to cart"]',
+                    'button[aria-label^="add to cart"]',
                     'button[data-automation="add-to-cart-button"]',
-                    'button[aria-label*="Add to cart"]',
-                    'button[aria-label*="add to cart"]',
                     '[data-testid="addToCartBtn"]',
                     'button.add-to-cart-btn',
                 ];
