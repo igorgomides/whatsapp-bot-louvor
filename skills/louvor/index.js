@@ -5,6 +5,7 @@
 
 const { isEscala, parseEscala, formatarResumo } = require('./parseEscala');
 const louveApp = require('./louveAppApi');
+const brain = require('../brain');
 
 const GRUPO_LOUVOR = 'Louvor discípulos';
 const GRUPO_LOUVOR_TB = 'Louvor discípulos tb';
@@ -26,6 +27,25 @@ async function onReady(client) {
     } else {
         console.log(`[louvor] ⚠️ Token LouveApp não configurado. Use !token <token> em "${GRUPO_BOT}".`);
     }
+
+    // Register AI intent handler
+    brain.registerIntent('escala', handleIntent);
+    brain.registerIntent('status', async (intent, data, msg) => {
+        const tokenStatus = louveApp.getToken() ? '✅ Configurado' : '❌ Não configurado';
+        const escalaStatus = escalaPendente
+            ? `✅ Pendente (${escalaPendente.escalados.length} pessoas, ${escalaPendente.musicas.length} músicas)`
+            : '❌ Nenhuma';
+        await msg.reply(`📊 *Status do Bot*\n\n🔑 Token LouveApp: ${tokenStatus}\n📋 Escala pendente: ${escalaStatus}`);
+    });
+    brain.registerIntent('ajuda', async (intent, data, msg) => {
+        await msg.reply(
+            '🤖 *O que eu sei fazer:*\n\n' +
+            '🛒 *Compras* — "coloca leite e ovos no walmart"\n' +
+            '📋 *Escala* — "confirma a escala" / "cancela a escala"\n' +
+            '📊 *Status* — "o bot está ativo?"\n\n' +
+            'Você também pode usar comandos diretos: !compras, !confirmar, !cancelar, !status'
+        );
+    });
 }
 
 /**
@@ -244,6 +264,45 @@ async function handleMessage(msg, client) {
     }
 
     return false;
+}
+
+/**
+ * Called by brain skill when Ollama classifies intent as 'escala'.
+ */
+async function handleIntent(intent, data, msg, client) {
+    const acao = data.acao || 'consultar';
+
+    if (acao === 'confirmar') {
+        // Reuse the !confirmar logic
+        const fakeMsg = { ...msg, body: '!confirmar' };
+        fakeMsg.reply = msg.reply.bind(msg);
+        // Directly call confirm flow
+        if (!escalaPendente) { await msg.reply('❌ Nenhuma escala pendente para confirmar.'); return; }
+        if (!louveApp.getToken()) { await msg.reply('❌ Token não configurado! Use !token <token> primeiro.'); return; }
+        await msg.reply('⏳ Criando escala no LouveApp...');
+        try {
+            await louveApp.criarEscala({
+                descricao: escalaPendente.descricao || 'Culto de Domingo',
+                data: escalaPendente.dataEvento,
+                escalados: escalaPendente.escalados,
+                musicas: escalaPendente.musicas,
+            });
+            await msg.reply('✅ *Escala criada com sucesso no LouveApp!*\n\n🔗 https://app.louveapp.com.br');
+            escalaPendente = null;
+        } catch (e) {
+            await msg.reply(`❌ Erro ao criar escala: ${e.message}`);
+        }
+    } else if (acao === 'cancelar') {
+        escalaPendente ? (escalaPendente = null, await msg.reply('❌ Escala cancelada.'))
+            : await msg.reply('ℹ️ Nenhuma escala pendente.');
+    } else {
+        // consultar / default
+        if (!escalaPendente) {
+            await msg.reply('ℹ️ Não há escala pendente no momento.');
+        } else {
+            await msg.reply(formatarResumo(escalaPendente));
+        }
+    }
 }
 
 module.exports = { name: 'louvor', onReady, handleMessage };

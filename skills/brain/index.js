@@ -1,0 +1,112 @@
+/**
+ * skills/brain/index.js
+ * AI Brain skill — routes natural language messages to the right skill via Ollama/llama3.
+ *
+ * - Intercepts messages in GRUPO_BOT and private chats
+ * - Sends text to Ollama for intent classification
+ * - Calls handleIntent() on the matching skill
+ * - Falls back to command mode if Ollama is offline
+ */
+
+const { chat, isOnline, OLLAMA_MODEL } = require('./ollama');
+const { buildMessages } = require('./prompt');
+
+const GRUPO_BOT = 'Whatsapp Bot';
+
+// Registry of skills that support handleIntent
+const intentHandlers = {};
+
+/**
+ * Register a skill's intent handler.
+ * Called by each skill that supports AI-driven invocation.
+ * @param {string} intent
+ * @param {Function} handler  async (intent, data, msg, client) => void
+ */
+function registerIntent(intent, handler) {
+    intentHandlers[intent] = handler;
+}
+
+/**
+ * Parse Ollama's JSON response, resilient to markdown fences and extra text.
+ */
+function parseIntent(raw) {
+    try {
+        // Strip markdown code fences if present
+        const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // Extract first JSON object
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('No JSON found');
+        return JSON.parse(match[0]);
+    } catch (e) {
+        return { intent: 'none', data: {} };
+    }
+}
+
+async function onReady(client) {
+    const online = await isOnline();
+    if (online) {
+        console.log(`[brain] 🧠 Ollama online! Modelo: ${OLLAMA_MODEL}`);
+    } else {
+        console.log('[brain] ⚠️ Ollama offline — bot funcionará apenas com comandos ! diretos.');
+    }
+}
+
+async function handleMessage(msg, client) {
+    const chat_obj = await msg.getChat();
+    const isPrivate = !chat_obj.isGroup;
+    const isGrupoBot = chat_obj.isGroup && chat_obj.name === GRUPO_BOT;
+
+    // Brain only processes messages from Grupo Bot or private chats
+    if (!isPrivate && !isGrupoBot) return false;
+
+    const texto = msg.body.trim();
+
+    // Skip empty messages or messages starting with ! (handled by other skills first)
+    if (!texto || texto.startsWith('!')) return false;
+
+    // Skip messages sent by the bot itself
+    if (msg.fromMe) return false;
+
+    // Check if Ollama is online
+    const online = await isOnline();
+    if (!online) {
+        console.log('[brain] ⚠️ Ollama offline, skipping AI routing.');
+        return false; // Let other skills handle via commands
+    }
+
+    console.log(`[brain] 🧠 Processando com Ollama: "${texto.slice(0, 60)}..."`);
+
+    let intentResult;
+    try {
+        const messages = buildMessages(texto);
+        const raw = await chat(messages);
+        console.log(`[brain] 📤 Ollama respondeu: ${raw.slice(0, 200)}`);
+        intentResult = parseIntent(raw);
+    } catch (err) {
+        console.error('[brain] ❌ Erro ao chamar Ollama:', err.message);
+        return false;
+    }
+
+    const { intent, data } = intentResult;
+    console.log(`[brain] 🎯 Intent: ${intent}`, data);
+
+    // Route to the matching skill
+    if (intent && intent !== 'none' && intentHandlers[intent]) {
+        try {
+            await intentHandlers[intent](intent, data, msg, client);
+        } catch (err) {
+            console.error(`[brain] ❌ Erro ao executar intent "${intent}":`, err.message);
+            await msg.reply(`❌ Erro ao processar sua solicitação: ${err.message}`);
+        }
+        return true;
+    }
+
+    // intent: none — friendly response
+    if (intent === 'none') {
+        return false; // Don't reply to random chats
+    }
+
+    return false;
+}
+
+module.exports = { name: 'brain', onReady, handleMessage, registerIntent };

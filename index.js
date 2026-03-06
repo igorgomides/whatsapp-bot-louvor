@@ -14,7 +14,9 @@ const fs = require('fs');
 
 // ─── Register Skills ───────────────────────────────────────────────────────────
 // Each skill must export: { name, onReady(client), handleMessage(msg, client) }
+// Brain must be first — it intercepts natural language before other skills
 const skills = [
+    require('./skills/brain'),
     require('./skills/louvor'),
     require('./skills/walmart'),
     // Future skills go here 👇

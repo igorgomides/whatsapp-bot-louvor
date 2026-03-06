@@ -5,10 +5,46 @@
 
 const { parseCompras, formatarLista } = require('./parseCompras');
 const { fazerCompras } = require('./walmartShopper');
+const brain = require('../brain');
 
 async function onReady(client) {
-    console.log('[walmart] 🛒 Skill Walmart carregada. Aguardando !compras...');
+    console.log('[walmart] 🛒 Skill Walmart carregada. Aguardando !compras ou linguagem natural...');
+    // Register AI intent handler
+    brain.registerIntent('compras', handleIntent);
 }
+
+/**
+ * Called by brain skill when Ollama classifies intent as 'compras'.
+ * @param {string} intent
+ * @param {{ itens: {quantidade: number, nome: string}[] }} data
+ */
+async function handleIntent(intent, data, msg, client) {
+    const itens = (data.itens || []).filter(i => i.nome);
+
+    if (itens.length === 0) {
+        await msg.reply('❌ Não entendi quais itens você quer comprar. Pode repetir?');
+        return;
+    }
+
+    await msg.reply(
+        `⏳ Iniciando compras no Walmart.ca...\n\n📋 Itens:\n${formatarLista(itens)}`
+    );
+
+    console.log(`[walmart] 🛒 Iniciando compras para ${itens.length} item(s) via AI...`);
+
+    try {
+        const { adicionados, naoEncontrados } = await fazerCompras(itens);
+        let resposta = '✅ *Compras finalizadas!*\n\n';
+        if (adicionados.length > 0) resposta += adicionados.map(i => `✅ ${i}`).join('\n') + '\n';
+        if (naoEncontrados.length > 0) resposta += naoEncontrados.map(i => `⚠️ ${i} — não encontrado`).join('\n') + '\n';
+        resposta += '\n🛒 Seu carrinho: https://www.walmart.ca/cart';
+        await msg.reply(resposta);
+    } catch (err) {
+        console.error('[walmart] ❌ Erro:', err);
+        await msg.reply(`❌ Erro ao fazer compras: ${err.message}`);
+    }
+}
+
 
 /**
  * Handles !compras, !ping (in private), !ajuda
