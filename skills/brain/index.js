@@ -27,20 +27,35 @@ function registerIntent(intent, handler) {
 }
 
 /**
- * Parse Ollama's JSON response, resilient to markdown fences and extra text.
+ * Parse Ollama's JSON response, resilient to extra text before/after the JSON.
+ * Uses brace-depth tracking to extract the first complete JSON object.
  */
 function parseIntent(raw) {
     try {
-        // Strip markdown code fences if present
-        const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        // Extract first JSON object
-        const match = clean.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error('No JSON found');
-        return JSON.parse(match[0]);
+        // Find the first opening brace
+        const start = raw.indexOf('{');
+        if (start === -1) return { intent: 'none', data: {} };
+
+        // Walk forward tracking brace depth to find the matching closing brace
+        let depth = 0;
+        let end = -1;
+        for (let i = start; i < raw.length; i++) {
+            if (raw[i] === '{') depth++;
+            else if (raw[i] === '}') {
+                depth--;
+                if (depth === 0) { end = i; break; }
+            }
+        }
+
+        if (end === -1) return { intent: 'none', data: {} };
+
+        const parsed = JSON.parse(raw.slice(start, end + 1));
+        return parsed;
     } catch (e) {
         return { intent: 'none', data: {} };
     }
 }
+
 
 async function onReady(client) {
     const online = await isOnline();

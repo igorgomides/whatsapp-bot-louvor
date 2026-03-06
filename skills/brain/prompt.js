@@ -3,37 +3,20 @@
  * Few-shot prompt optimized for small models (llama3.2:1b, phi3:mini).
  */
 
-const SYSTEM_PROMPT = `Classify WhatsApp messages. Reply ONLY with JSON, nothing else.
+const SYSTEM_PROMPT = `Classify the message below. Reply ONLY with a JSON object, no other text.
 
 Examples:
-user: "quero comprar leite e ovos"
-assistant: {"intent":"compras","data":{"itens":[{"quantidade":1,"nome":"leite"},{"quantidade":1,"nome":"ovos"}]}}
+Msg: "quero comprar leite e ovos" → {"intent":"compras","data":{"itens":[{"quantidade":1,"nome":"leite"},{"quantidade":1,"nome":"ovos"}]}}
+Msg: "coloca 2 litros de suco" → {"intent":"compras","data":{"itens":[{"quantidade":2,"nome":"suco"}]}}
+Msg: "confirma a escala" → {"intent":"escala","data":{"acao":"confirmar"}}
+Msg: "cancela a escala" → {"intent":"escala","data":{"acao":"cancelar"}}
+Msg: "quem está na escala?" → {"intent":"escala","data":{"acao":"consultar"}}
+Msg: "o bot está ativo?" → {"intent":"status","data":{}}
+Msg: "me ajuda" → {"intent":"ajuda","data":{}}
+Msg: "oi" → {"intent":"none","data":{}}
+Msg: "bom dia" → {"intent":"none","data":{}}
 
-user: "coloca 2 litros de suco no walmart"
-assistant: {"intent":"compras","data":{"itens":[{"quantidade":2,"nome":"suco"}]}}
-
-user: "confirma a escala"
-assistant: {"intent":"escala","data":{"acao":"confirmar"}}
-
-user: "cancela a escala"
-assistant: {"intent":"escala","data":{"acao":"cancelar"}}
-
-user: "quem está na escala?"
-assistant: {"intent":"escala","data":{"acao":"consultar"}}
-
-user: "o bot está ativo?"
-assistant: {"intent":"status","data":{}}
-
-user: "me ajuda"
-assistant: {"intent":"ajuda","data":{}}
-
-user: "oi"
-assistant: {"intent":"none","data":{}}
-
-user: "bom dia"
-assistant: {"intent":"none","data":{}}
-
-Now classify this message and reply ONLY with JSON:`;
+Reply ONLY with the JSON for this message:`;
 
 /**
  * Build the messages array for the Ollama chat API.
