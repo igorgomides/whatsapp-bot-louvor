@@ -82,13 +82,24 @@ async function loadCookies(page) {
             // Only load walmart.ca cookies
             .filter(c => !c.domain || c.domain.includes('walmart.ca'));
 
-        if (cookies.length === 0) {
+        // Set cookies one at a time — skip any that Puppeteer still rejects
+        let loaded = 0;
+        let skipped = 0;
+        for (const cookie of cookies) {
+            try {
+                await page.setCookie(cookie);
+                loaded++;
+            } catch {
+                skipped++;
+            }
+        }
+
+        if (loaded === 0) {
             console.warn('⚠️ Nenhum cookie válido para walmart.ca encontrado no arquivo.');
             return false;
         }
 
-        await page.setCookie(...cookies);
-        console.log(`🍪 ${cookies.length} cookies carregados.`);
+        console.log(`🍪 ${loaded} cookies carregados${skipped > 0 ? ` (${skipped} ignorados)` : ''}.`);
         return true;
     } catch (e) {
         console.warn('⚠️ Erro ao carregar cookies:', e.message);
