@@ -61,11 +61,12 @@ async function handleMessage(msg, client) {
 
     const texto = msg.body.trim();
 
-    // Skip empty messages or messages starting with ! (handled by other skills first)
+    // Skip empty or command messages (handled directly by other skills)
     if (!texto || texto.startsWith('!')) return false;
 
-    // Skip messages sent by the bot itself
-    if (msg.fromMe) return false;
+    // Skip bot's own reply messages to avoid loops (they start with known emoji patterns)
+    const botPrefixes = ['⏳', '✅', '❌', '⚠️', '🛒', '📋', '🤖', '📊', '🔑'];
+    if (botPrefixes.some(p => texto.startsWith(p))) return false;
 
     // Check if Ollama is online
     const online = await isOnline();
