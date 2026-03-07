@@ -105,7 +105,7 @@ const startBot = (numeroTelefone = null) => {
 
     // ── Message routing ────────────────────────────────────────────────────────
 
-    client.on('message_create', async (msg) => {
+    client.on('message', async (msg) => {
         try {
             for (const skill of skills) {
                 const handled = await skill.handleMessage(msg, client);

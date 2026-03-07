@@ -7,6 +7,8 @@ const { parseCompras, formatarLista } = require('./parseCompras');
 const { fazerCompras } = require('./walmartShopper');
 const brain = require('../brain');
 
+const GRUPO_BOT = 'Whatsapp Bot';
+
 async function onReady(client) {
     console.log('[walmart] 🛒 Skill Walmart carregada. Aguardando !compras ou linguagem natural...');
     // Register AI intent handler
@@ -51,6 +53,10 @@ async function handleIntent(intent, data, msg, client) {
  * Returns true if the message was consumed.
  */
 async function handleMessage(msg, client) {
+    const chat = await msg.getChat();
+    // Walmart direct commands only work in the bot group
+    if (!chat.isGroup || chat.name !== GRUPO_BOT) return false;
+
     const texto = msg.body.trim();
     const textoLower = texto.toLowerCase();
 

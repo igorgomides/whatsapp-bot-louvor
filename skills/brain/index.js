@@ -12,6 +12,7 @@ const { chat, isOnline, OLLAMA_MODEL } = require('./ollama');
 const { buildMessages } = require('./prompt');
 
 const GRUPO_BOT = 'Whatsapp Bot';
+const GRUPO_LOUVOR = 'Louvor discípulos';
 
 // Registry of skills that support handleIntent
 const intentHandlers = {};
@@ -68,11 +69,15 @@ async function onReady(client) {
 
 async function handleMessage(msg, client) {
     const chat_obj = await msg.getChat();
-    const isPrivate = !chat_obj.isGroup;
-    const isGrupoBot = chat_obj.isGroup && chat_obj.name === GRUPO_BOT;
 
-    // Brain only processes messages from Grupo Bot or private chats
-    if (!isPrivate && !isGrupoBot) return false;
+    // Brain only reads from Grupo Bot and Grupo Louvor (never private chats or other groups)
+    if (!chat_obj.isGroup) return false;
+    const isGrupoBot = chat_obj.name === GRUPO_BOT;
+    const isGrupoLouvor = chat_obj.name === GRUPO_LOUVOR;
+    if (!isGrupoBot && !isGrupoLouvor) return false;
+
+    // Brain only responds/acts in Grupo Bot — let louvor skill handle Louvor discípulos
+    if (!isGrupoBot) return false;
 
     const texto = msg.body.trim();
 
